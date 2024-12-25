@@ -3,6 +3,8 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:reminder_project/screens/form.dart';
 import '../models/task.dart';
 import 'package:intl/intl.dart';
+import 'package:top_snackbar_flutter/top_snack_bar.dart';
+import 'package:top_snackbar_flutter/custom_snack_bar.dart';
 
 Color _getPriorityColor(Priority priority) {
   switch (priority) {
@@ -15,8 +17,6 @@ Color _getPriorityColor(Priority priority) {
   }
 }
 
-
-
 class ReminderList extends StatefulWidget {
   final List<Task> tasks;
   final Function(String) onTaskDeleted;
@@ -24,66 +24,72 @@ class ReminderList extends StatefulWidget {
   final Function(Task) onTaskCompleted;
   final ListMode mode;
 
-  const ReminderList({
-    super.key,
-    required this.tasks,
-    required this.onTaskDeleted,
-    required this.onTaskEdited,
-    required this.mode,
-    required this.onTaskCompleted
-  });
-
-
-
+  const ReminderList(
+      {super.key,
+      required this.tasks,
+      required this.onTaskDeleted,
+      required this.onTaskEdited,
+      required this.mode,
+      required this.onTaskCompleted});
 
   @override
   State<ReminderList> createState() => _ReminderListState();
 }
 
 class _ReminderListState extends State<ReminderList> {
+  void _showMotivationalQuote(BuildContext context) {
+    final quote = Quote.getRandomQuote();
+    showTopSnackBar(
+      Overlay.of(context),
+      CustomSnackBar.success(
+        message: '"${quote.text}"\n- ${quote.author ?? "Unknown"}',
+        backgroundColor: Colors.black26,
+      ),
+      displayDuration: const Duration(seconds: 2),
+    );
+  }
+
   // Add helper methods for filtering
-bool _isOverdue(Task task) {
-  final now = DateTime.now();
-  final taskDateTime = _getTaskDateTime(task);
-  final today = DateTime(
-    now.year,
-    now.month,
-    now.day,
-  );
-  // Task is overdue if it's before today
-  return taskDateTime.isBefore(today);
-}
+  bool _isOverdue(Task task) {
+    final now = DateTime.now();
+    final taskDateTime = _getTaskDateTime(task);
+    final today = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    );
+    // Task is overdue if it's before today
+    return taskDateTime.isBefore(today);
+  }
 
-bool _isToday(Task task) {
-  final now = DateTime.now();
-  final taskDate = DateTime(
-    task.dueDate.year,
-    task.dueDate.month,
-    task.dueDate.day,
-  );
-  final today = DateTime(
-    now.year,
-    now.month,
-    now.day,
-  );
-  return taskDate.isAtSameMomentAs(today);
-}
+  bool _isToday(Task task) {
+    final now = DateTime.now();
+    final taskDate = DateTime(
+      task.dueDate.year,
+      task.dueDate.month,
+      task.dueDate.day,
+    );
+    final today = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    );
+    return taskDate.isAtSameMomentAs(today);
+  }
 
-bool _isUpcoming(Task task) {
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-  final tomorrow = today.add(const Duration(days: 1));
-  
-  final taskDate = DateTime(
-    task.dueDate.year,
-    task.dueDate.month,
-    task.dueDate.day,
-  );
-  
-  // Task is upcoming only if it's strictly after today
-  return taskDate.isAfter(today);
-}
+  bool _isUpcoming(Task task) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
 
+    final taskDate = DateTime(
+      task.dueDate.year,
+      task.dueDate.month,
+      task.dueDate.day,
+    );
+
+    // Task is upcoming only if it's strictly after today
+    return taskDate.isAfter(today);
+  }
 
   DateTime _getTaskDateTime(Task task) {
     return DateTime(
@@ -101,14 +107,15 @@ bool _isUpcoming(Task task) {
     });
     widget.onTaskDeleted(taskId);
   }
-bool _isCompleted(Task task) {
-  // Only show completed tasks in completed mode
-  if (widget.mode == ListMode.completed) {
-    return task.isCompleted;
+
+  bool _isCompleted(Task task) {
+    // Only show completed tasks in completed mode
+    if (widget.mode == ListMode.completed) {
+      return task.isCompleted;
+    }
+    // For other modes, filter out completed tasks
+    return !task.isCompleted;
   }
-  // For other modes, filter out completed tasks
-  return !task.isCompleted;
-}
 
   @override
   Widget build(BuildContext context) {
@@ -130,103 +137,129 @@ bool _isCompleted(Task task) {
                     key: Key(task.id),
                     endActionPane: ActionPane(
                       motion: const ScrollMotion(),
-                      children: [
-                        SlidableAction(
-                          onPressed: (context) async {
-                            final result = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ReminderForm(
-                                  task: task,
-                                  onSubmit: (editedTask) {    
-                                    widget.onTaskEdited(editedTask);
-                                    setState(() {
-                                      // First update the task in the list
-                                      final index = widget.tasks.indexWhere((t) => t.id == editedTask.id);
-                                      if (index != -1) {
-                                        widget.tasks[index] = editedTask;
-                                      }
-
-                                      // Remove task if it no longer belongs in current view
-                                      switch (widget.mode) {
-                                        case ListMode.overdue:
-                                          if (!_isOverdue(editedTask) || editedTask.isCompleted) {
-                                            widget.tasks.remove(editedTask);
-                                          }
-                                          break;
-                                        case ListMode.today:
-                                          if (!_isToday(editedTask) || editedTask.isCompleted) {
-                                            widget.tasks.remove(editedTask);
-                                          }
-                                          break;
-                                        case ListMode.upcoming:
-                                          if (!_isUpcoming(editedTask) || editedTask.isCompleted) {
-                                            widget.tasks.remove(editedTask);
-                                          }
-                                          break;
-                                        case ListMode.completed:
-                                          if (!editedTask.isCompleted) {
-                                            widget.tasks.remove(editedTask);
-                                          }
-                                          break;
-                                        case ListMode.all:
-                                          if (editedTask.isCompleted) {
-                                            widget.tasks.remove(editedTask);
-                                          }
-                                          break;
-                                        
-                                      }
-                                      // Navigator.pop(context, true);
-                                    });
-                                  },
-                                  mode: FormMode.edit,
-                                ),
+                      children: widget.mode == ListMode.completed
+                          ? [
+                              SlidableAction(
+                                onPressed: (context) {
+                                  _deleteTask(task.id);
+                                },
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(8)),
+                                backgroundColor: Colors.transparent,
+                                foregroundColor: Colors.red,
+                                icon: Icons.delete,
+                                label: 'Delete',
                               ),
-                            );
-                            if (result == true) {
-                              setState(() {});
-                            }
-                          },
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
-                          icon: Icons.edit,
-                          label: 'Edit',
-                        ),
-                          SlidableAction(
-    onPressed: (context) {
-      final completedTask = Task(
-        description: task.description,
-        priority: task.priority,
-        createdAt: task.createdAt,
-        id: task.id,
-        title: task.title,
-        dueDate: task.dueDate,
-        preferredTime: task.preferredTime,
-        isCompleted: true,
-      );
-      widget.onTaskEdited(completedTask);
-      setState(() {
-        if (widget.mode != ListMode.completed) {
-          widget.tasks.removeWhere((t) => t.id == task.id);
-        }
-      });
-    },
-    backgroundColor: Colors.green,
-    foregroundColor: Colors.white,
-    icon: Icons.check_circle,
-    label: 'Complete',
-  ),
-                        SlidableAction(
-                          onPressed: (context) {
-                            _deleteTask(task.id);
-                          },
-                          borderRadius: BorderRadius.all(Radius.circular(8)),
-                          backgroundColor: Colors.red,
-                          foregroundColor: Colors.white,
-                          icon: Icons.delete,
-                          label: 'Delete',
-                        ),
-                      ],
+                            ]
+                          : [
+                              SlidableAction(
+                                onPressed: (context) async {
+                                  final result = await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => ReminderForm(
+                                        task: task,
+                                        onSubmit: (editedTask) {
+                                          widget.onTaskEdited(editedTask);
+                                          setState(() {
+                                            // First update the task in the list
+                                            final index = widget.tasks
+                                                .indexWhere((t) =>
+                                                    t.id == editedTask.id);
+                                            if (index != -1) {
+                                              widget.tasks[index] = editedTask;
+                                            }
+
+                                            // Remove task if it no longer belongs in current view
+                                            switch (widget.mode) {
+                                              case ListMode.overdue:
+                                                if (!_isOverdue(editedTask) ||
+                                                    editedTask.isCompleted) {
+                                                  widget.tasks
+                                                      .remove(editedTask);
+                                                }
+                                                break;
+                                              case ListMode.today:
+                                                if (!_isToday(editedTask) ||
+                                                    editedTask.isCompleted) {
+                                                  widget.tasks
+                                                      .remove(editedTask);
+                                                }
+                                                break;
+                                              case ListMode.upcoming:
+                                                if (!_isUpcoming(editedTask) ||
+                                                    editedTask.isCompleted) {
+                                                  widget.tasks
+                                                      .remove(editedTask);
+                                                }
+                                                break;
+                                              case ListMode.completed:
+                                                if (!editedTask.isCompleted) {
+                                                  widget.tasks
+                                                      .remove(editedTask);
+                                                }
+                                                break;
+                                              case ListMode.all:
+                                                if (editedTask.isCompleted) {
+                                                  widget.tasks
+                                                      .remove(editedTask);
+                                                }
+                                                break;
+                                            }
+                                            // Navigator.pop(context, true);
+                                          });
+                                        },
+                                        mode: FormMode.edit,
+                                      ),
+                                    ),
+                                  );
+                                  if (result == true) {
+                                    setState(() {});
+                                  }
+                                },
+                                backgroundColor: Colors.transparent,
+                                foregroundColor: Colors.blue,
+                                icon: Icons.edit,
+                                label: 'Edit',
+                              ),
+                              SlidableAction(
+                                onPressed: (context) {
+                                  final completedTask = Task(
+                                    description: task.description,
+                                    priority: task.priority,
+                                    createdAt: task.createdAt,
+                                    id: task.id,
+                                    title: task.title,
+                                    dueDate: task.dueDate,
+                                    preferredTime: task.preferredTime,
+                                    isCompleted: true,
+                                  );
+                                  widget.onTaskEdited(completedTask);
+                                  setState(() {
+                                    if (widget.mode != ListMode.completed) {
+                                      widget.tasks
+                                          .removeWhere((t) => t.id == task.id);
+                                    }
+                                  });
+                                  _showMotivationalQuote(context);
+                                },
+                                backgroundColor: Colors.transparent,
+                                foregroundColor: Colors.green,
+                                icon: Icons.check_circle,
+                                label: 'Complete',
+                              ),
+                              SlidableAction(
+                                onPressed: (context) {
+                                  _deleteTask(task.id);
+                                },
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(8)),
+                                backgroundColor: Colors.transparent,
+                                foregroundColor: Colors.red,
+                                icon: Icons.delete,
+                                label: 'Delete',
+                              ),
+                            ],
                     ),
                     child: Remind_Card(task: task),
                   ),

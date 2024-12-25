@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:math';
+
 enum Priority { low, medium, high }
 enum RecurrenceInterval { none, daily, weekly, monthly }
 enum FormMode {
@@ -47,26 +49,7 @@ class Task {
     return "Task(id: $id, title: $title, priority: $priority, dueDate: $dueDate, isCompleted: $isCompleted, preferredTime: $preferredTime)";
   }
 
-  /// Calculate the duration between createdAt and dueDate
-  String getDuration() {
-    final duration = dueDate.difference(createdAt);
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes % 60;
 
-    return '$hours hours, $minutes minutes';
-  }
-
-  /// Convert priority to a readable string
-  String getPriorityString() {
-    switch (priority) {
-      case Priority.low:
-        return 'Low';
-      case Priority.medium:
-        return 'Medium';
-      case Priority.high:
-        return 'High';
-    }
-  }
 
   /// Convert Task to JSON
   Map<String, dynamic> toJson() {
@@ -107,31 +90,6 @@ class Task {
   }
 }
 
-class TaskHistory {
-  String id;
-  String taskId;
-  DateTime completionDate;
-
-  TaskHistory({
-    String? id,
-    required this.taskId,
-    required this.completionDate,
-  }) : id = id ?? const Uuid().v4();
-}
-
-class Progress {
-  int totalTasksCreated;
-  int tasksCompleted;
-  int streak;
-  DateTime? lastCompletionDate;
-
-  Progress({
-    this.totalTasksCreated = 0,
-    this.tasksCompleted = 0,
-    this.streak = 0,
-    this.lastCompletionDate,
-  });
-}
 
 class Quote {
   String id;
@@ -143,6 +101,26 @@ class Quote {
     required this.text,
     this.author,
   }) : id = id ?? const Uuid().v4();
+
+  // Static list of motivational quotes
+  static final List<Quote> quotes = [
+    Quote(text: "The only way to do great work is to love what you do.", author: "Steve Jobs"),
+    Quote(text: "Don't watch the clock; do what it does. Keep going.", author: "Sam Levenson"),
+    Quote(text: "Success is not final, failure is not fatal.", author: "Winston Churchill"),
+    Quote(text: "The future depends on what you do today.", author: "Mahatma Gandhi"),
+    Quote(text: "Your time is limited, don't waste it living someone else's life.", author: "Steve Jobs"),
+    Quote(text: "The way to get started is to quit talking and begin doing.", author: "Walt Disney"),
+    Quote(text: "Everything you've ever wanted is on the other side of fear.", author: "George Addair"),
+    Quote(text: "Success usually comes to those who are too busy to be looking for it.", author: "Henry David Thoreau"),
+    Quote(text: "The only limit to our realization of tomorrow will be our doubts of today.", author: "Franklin D. Roosevelt"),
+    Quote(text: "Do what you can, with what you have, where you are.", author: "Theodore Roosevelt"),
+  ];
+
+  // Method to get random quote
+  static Quote getRandomQuote() {
+    final random = Random();
+    return quotes[random.nextInt(quotes.length)];
+  }
 }
 
 class TaskStorage {

@@ -74,7 +74,6 @@ class _ReminderFormState extends State<ReminderForm> {
         preferredTime: _preferredTime,
       );
     widget.onSubmit(task);
-    //     Different navigation based on form mode
     if (widget.mode == FormMode.edit) {
       Navigator.pop(context, true); // Return to reminder list
     } else {
